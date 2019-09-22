@@ -31,7 +31,7 @@ func dataSourceAwsPrivateDnsNamespace() *schema.Resource {
 				Computed: true,
 			},
 
-			"filter": sdCustomFiltersSchema(),
+			"filter": sdCustomFiltersSchema(), // TODO: create file for and define
 
 			"tags": tagsSchemaComputed(),
 		},
