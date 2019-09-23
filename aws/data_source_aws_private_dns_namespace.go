@@ -31,9 +31,7 @@ func dataSourceAwsPrivateDnsNamespace() *schema.Resource {
 				Computed: true,
 			},
 
-			"filter": sdCustomFiltersSchema(), // TODO: create file for and define
-
-			"tags": tagsSchemaComputed(),
+			"filter": sdCustomFiltersSchema(),
 		},
 	}
 }
@@ -41,19 +39,25 @@ func dataSourceAwsPrivateDnsNamespace() *schema.Resource {
 func dataSourceAwsPrivateDnsNamespaceRead(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*AWSClient).sdconn
 
-	nsName := d.Get("name").(string)
+	req := &servicediscovery.ListNamespaces()
 
-	input := &servicediscovery.ListNamespacesInput{
-		NamespaceNames: []*string{aws.String(nsName)},
+	if id, ok := d.GetOk("id"); ok {
+		req.Namespaces = []*string{aws.String(id.(string))}
 	}
 
-	// if id, ok := d.GetOk("id"); ok {
-	// 	req.SubnetIds = []*string{aws.String(id.(string))}
-	// }
+	filters := map[string]string{
+		"name":   d.Get("name").(string)
+	}
+
+	req.Filters = buildSdAttributeFilterList(filters)
+	if len(req.Filters) == 0 {
+		// Don't send an empty filters list; the Service Discovery API won't accept it.
+		req.Filters = nil
+	}
 
 	log.Printf("[DEBUG] Reading Namespace: %s", input)
 
-	resp, err := conn.ListNamespaces(input)
+	resp, err := conn.ListNamespaces(req)
 	if err != nil {
 		return fmt.Errorf("Error retrieving namespace: %s", err)
 	}
@@ -67,6 +71,7 @@ func dataSourceAwsPrivateDnsNamespaceRead(d *schema.ResourceData, meta interface
 	namespace := resp.Namespaces[0]
 
 	d.SetId(*namespace.NamespaceId)
+	d.Set("name", namespace.NamespaceName)
 	d.Set("arn", namespace.NamespaceArn)
 
 	return nil
